@@ -1,5 +1,6 @@
 package de.cheaterll.dyndns.gui;
 
+import de.cheaterll.dyndns.Main;
 import de.cheaterll.dyndns.dns.DynDNSEntry;
 import de.cheaterll.dyndns.dns.DynDNSHost;
 import de.cheaterll.dyndns.dns.DynDNSList;
@@ -16,7 +17,11 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 /**
  * Created by CheaterLL on 01.06.2017.
@@ -42,21 +47,13 @@ public class MainWindow extends JFrame {
     public MainWindow(char[] password) {
         Encryption.setPassword(password);
         File xml = new File("dyndns.xml");
-        if (xml.exists()) {
-            try {
-                dynDNSList = DynDNSList.read(xml);
-            } catch (JAXBException e) {
-                e.printStackTrace();
-            }
-        } else {
-            dynDNSList = new DynDNSList();
-        }
+        dynDNSList = Main.getDynDNSList();
         initComponents();
         initEvents();
         setSize(800, 500);
         setLocationRelativeTo(null);
         setTitle("DynDNS");
-        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setVisible(true);
     }
 
@@ -67,7 +64,6 @@ public class MainWindow extends JFrame {
         jpLeft.setPreferredSize(new Dimension(400, 500));
         jTree = new JTree(dynDNSList.toJTreeNodeStructure());
         jTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
-        //((DefaultTreeModel)jTree.getModel()).setAsksAllowsChildren(true);
         jspTree = new JScrollPane(jTree);
         jpLeft.add(jspTree, BorderLayout.CENTER);
 
@@ -91,7 +87,6 @@ public class MainWindow extends JFrame {
         hostPanel = new EditDynDNSHostPanel(this);
 
         jpRight = new JPanel();
-        //jpRight = entryPanel;
 
         c.add(jpLeft, BorderLayout.WEST);
         c.add(jpRight, BorderLayout.EAST);
@@ -99,29 +94,22 @@ public class MainWindow extends JFrame {
 
     private void initEvents() {
         jTree.addTreeSelectionListener(e -> {
-            Class selectedNodeClass = getSelectedNodeClass();
-            System.out.println("JTree Selection Changed to " + e.getPath() + " of " + selectedNodeClass);
-            treeSelectionChanged(selectedNodeClass);
+            treeSelectionChanged(getSelectedNodeClass());
         });
         jTree.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                Class selectedNodeClass = getSelectedNodeClass();
-                System.out.println("JTree gained focus, selected element is of " + selectedNodeClass);
-                treeSelectionChanged(selectedNodeClass);
+                treeSelectionChanged(getSelectedNodeClass());
             }
 
             @Override
             public void focusLost(FocusEvent e) {
-                Class selectedNodeClass = getSelectedNodeClass();
-                System.out.println("JTree lost focus, selected element is of " + selectedNodeClass);
-                treeSelectionChanged(selectedNodeClass);
+                treeSelectionChanged(getSelectedNodeClass());
             }
         });
 
         jbAdd.addActionListener(e -> {
             jTree.requestFocus();
-            System.out.println("Add");
             Class selectedNodeClass = getSelectedNodeClass();
             DefaultMutableTreeNode parent = null;
             DefaultMutableTreeNode node = null;
@@ -141,14 +129,12 @@ public class MainWindow extends JFrame {
                 DefaultTreeModel model = (DefaultTreeModel) jTree.getModel();
                 int index = parent.getChildCount();
                 model.insertNodeInto(node, parent, index);
-                model.nodesWereInserted(parent, new int[]{index});
-                pleaseJustScrollToThatFuckingPieceOfFuckingCrapBullShit(new TreePath(node), selectedNodeClass);
-                pleaseJustScrollToThatFuckingPieceOfFuckingCrapBullShit(new TreePath(parent), selectedNodeClass);
+                jTree.expandPath(new TreePath(parent.getPath()));
+                jTree.setSelectionPath(new TreePath(node.getPath()));
             }
         });
         jbRemove.addActionListener(e -> {
             jTree.requestFocus();
-            System.out.println("Remove");
             Class selectedNodeClass = getSelectedNodeClass();
             DefaultMutableTreeNode parent = null;
             DefaultMutableTreeNode node = null;
@@ -164,10 +150,8 @@ public class MainWindow extends JFrame {
             if (node != null) {
                 DefaultTreeModel model = (DefaultTreeModel) jTree.getModel();
                 model.removeNodeFromParent(node);
-//                model.reload();
-                TreePath treePath = new TreePath(parent);
-                pleaseJustScrollToThatFuckingPieceOfFuckingCrapBullShit(new TreePath(node), selectedNodeClass);
-                pleaseJustScrollToThatFuckingPieceOfFuckingCrapBullShit(new TreePath(parent), selectedNodeClass);
+                jTree.expandPath(new TreePath(parent.getPath()));
+                jTree.setSelectionPath(new TreePath(parent.getPath()));
             }
         });
         jbExpandAll.addActionListener(e -> {
@@ -181,49 +165,55 @@ public class MainWindow extends JFrame {
             }
 //            ((DefaultMutableTreeNode)jTree.getModel().getRoot())
         });
-    }
-
-    private void pleaseJustScrollToThatFuckingPieceOfFuckingCrapBullShit(TreePath treePath, Class selectedNodeClass) {
-        jTree.requestFocus();
-        jTree.makeVisible(treePath);
-        jTree.setSelectionPath(treePath);
-        jTree.scrollPathToVisible(treePath);
-        jTree.requestFocus();
-        treeSelectionChanged(selectedNodeClass);
+        MainWindow.this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                int i = JOptionPane.showConfirmDialog(MainWindow.this, "Speichern?", "Speichern?", JOptionPane.YES_NO_CANCEL_OPTION);
+                if (i == JOptionPane.YES_OPTION) {
+                    try {
+                        DynDNSList.write(dynDNSList, new File("dyndns.xml"));
+                        System.exit(0);
+                    } catch (JAXBException e1) {
+                        e1.printStackTrace();
+                    }
+                } else if (i == JOptionPane.NO_OPTION) {
+                    System.exit(0);
+                }
+            }
+        });
     }
 
     private void treeSelectionChanged(Class selectedNodeClass) {
         if (DynDNSEntry.class.equals(selectedNodeClass)) {
-            System.out.println("Entry selected");
             this.c.remove(jpRight);
             jpRight = entryPanel;
+            entryPanel.setEntry((DynDNSEntry) ((DefaultMutableTreeNode) jTree.getLastSelectedPathComponent()).getUserObject());
             this.c.add(jpRight, BorderLayout.EAST);
             jbAdd.setText("Add");
-            jbRemove.setText("Remove");
+            jbRemove.setText("Remove Entry");
             jbAdd.setEnabled(false);
             jbRemove.setEnabled(true);
             revalidate();
             repaint();
         }
         if (DynDNSHost.class.equals(selectedNodeClass)) {
-            System.out.println("Host selected");
             this.c.remove(jpRight);
             jpRight = hostPanel;
+            hostPanel.setHost((DynDNSHost) ((DefaultMutableTreeNode) jTree.getLastSelectedPathComponent()).getUserObject());
             this.c.add(jpRight, BorderLayout.EAST);
             jbAdd.setText("Add Entry");
-            jbRemove.setText("Remove Entry");
+            jbRemove.setText("Remove Host");
             jbAdd.setEnabled(true);
             jbRemove.setEnabled(true);
             revalidate();
             repaint();
         }
         if (DynDNSList.class.equals(selectedNodeClass)) {
-            System.out.println("Root selected");
             this.c.remove(jpRight);
             jpRight = new JPanel();
             this.c.add(jpRight, BorderLayout.EAST);
             jbAdd.setText("Add Host");
-            jbRemove.setText("Remove Host");
+            jbRemove.setText("Remove");
             jbAdd.setEnabled(true);
             jbRemove.setEnabled(false);
             revalidate();
@@ -232,29 +222,54 @@ public class MainWindow extends JFrame {
     }
 
     private Class getSelectedNodeClass() {
-        DefaultMutableTreeNode node = (DefaultMutableTreeNode) jTree.getLastSelectedPathComponent();
-        if (node == null) {
+        try {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) jTree.getLastSelectedPathComponent();
+            if (node == null) {
+                return null;
+            }
+            if (node.isRoot()) {
+                return DynDNSList.class;
+            }
+            if (((DefaultMutableTreeNode) node.getParent()).isRoot()) {
+                return DynDNSHost.class;
+            } else {
+                return DynDNSEntry.class;
+            }
+        } catch (Exception e) {
+            System.out.println("EXCEPTIONS WERE THROWN. ALSO FUCK YOU");
             return null;
-        }
-        if (node.isRoot()) {
-            System.out.println(DynDNSList.class);
-            return DynDNSList.class;
-        }
-        if (((DefaultMutableTreeNode) node.getParent()).isRoot()) {
-            System.out.println(DynDNSHost.class);
-            return DynDNSHost.class;
-        } else {
-            System.out.println(DynDNSEntry.class);
-            return DynDNSEntry.class;
         }
     }
 
     protected void saveDynDNSEntry(String url) {
-
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) jTree.getLastSelectedPathComponent();
+        DynDNSEntry entry = (DynDNSEntry) node.getUserObject();
+        entry.setUrl(url);
+        node.setUserObject(entry);
+        jTree.requestFocus();
     }
 
     protected void saveDynDNSHost(String provider, String queryurl, String username, char[] password) {
-
+        if (provider == null || queryurl == null || username == null || password == null || password.length < 1) {
+            if (JOptionPane.CANCEL_OPTION == JOptionPane.showConfirmDialog(MainWindow.this, "Das Password-Feld ist leer!", "Achtung!", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE)) {
+                return;
+            }
+        }
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) jTree.getLastSelectedPathComponent();
+        DynDNSHost host = (DynDNSHost) node.getUserObject();
+        host.setProvider(provider);
+        host.setQueryUrl(queryurl);
+        host.setUname(username);
+        if (password != null && password != new char[0]) {
+            try {
+                String encryptedPassword = Encryption.encrypt(password, host.getSalt());
+                host.setEncryptedPasswd(encryptedPassword);
+            } catch (GeneralSecurityException | IOException e) {
+                e.printStackTrace(); //Should not happen
+            }
+        }
+        node.setUserObject(host);
+        jTree.requestFocus();
     }
 
 

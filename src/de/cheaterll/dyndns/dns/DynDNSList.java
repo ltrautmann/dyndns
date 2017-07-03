@@ -29,7 +29,7 @@ public class DynDNSList {
     }
 
     public static DynDNSList read(File file) throws JAXBException {
-        return (DynDNSList) ((Unmarshaller) JAXBContext.newInstance(DynDNSList.class).createMarshaller()).unmarshal(file);
+        return (DynDNSList) JAXBContext.newInstance(DynDNSList.class).createUnmarshaller().unmarshal(file);
     }
 
     public static void write(DynDNSList dynDNSList, File file) throws JAXBException {

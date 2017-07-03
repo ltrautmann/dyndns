@@ -13,6 +13,9 @@ public class DynDNSEntry {
     @XmlElement
     private String url;
 
+    public DynDNSEntry() {
+    }
+
     public DynDNSEntry(String url) {
         this.url = url;
     }

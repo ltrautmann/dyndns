@@ -12,6 +12,18 @@ import java.nio.charset.Charset;
  */
 public class WebService {
 
+    public static String getPublicIP() throws IOException {
+        BufferedReader in = null;
+        try {
+            in = new BufferedReader(new InputStreamReader(new URL("http://checkip.amazonaws.com").openStream()));
+            return in.readLine();
+        }finally {
+            if (in != null) {
+                    in.close();
+            }
+        }
+    }
+
     public static String executeConnection(HttpURLConnection con) throws IOException {
         BufferedReader br;
         if (con.getResponseCode() == 200) {

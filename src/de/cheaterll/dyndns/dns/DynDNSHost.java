@@ -25,6 +25,9 @@ public class DynDNSHost {
     @XmlElement
     private List<DynDNSEntry> entries;
 
+    public DynDNSHost() {
+    }
+
     public DynDNSHost(String provider, String queryUrl, String uname, String encryptedPasswd, byte[] salt) {
         this.provider = provider;
         this.queryUrl = queryUrl;

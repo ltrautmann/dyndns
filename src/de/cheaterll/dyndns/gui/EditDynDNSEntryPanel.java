@@ -1,5 +1,7 @@
 package de.cheaterll.dyndns.gui;
 
+import de.cheaterll.dyndns.dns.DynDNSEntry;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -52,5 +54,9 @@ public class EditDynDNSEntryPanel extends JPanel {
 
     private void initEvents() {
         jbSave.addActionListener(e -> parent.saveDynDNSEntry(jtfEntryURL.getText()));
+    }
+
+    public void setEntry(DynDNSEntry entry) {
+        jtfEntryURL.setText(entry.getUrl());
     }
 }

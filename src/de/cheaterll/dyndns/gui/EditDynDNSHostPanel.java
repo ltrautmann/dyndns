@@ -1,9 +1,14 @@
 package de.cheaterll.dyndns.gui;
 
+import de.cheaterll.dyndns.dns.DynDNSHost;
+import de.cheaterll.dyndns.encryption.Encryption;
+
 import javax.swing.*;
 import java.awt.BorderLayout;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 /**
  * Created by CheaterLL on 15.06.2017.
@@ -65,5 +70,11 @@ public class EditDynDNSHostPanel extends JPanel {
 
     private void initEvents(){
         jbSave.addActionListener(e -> parent.saveDynDNSHost(jtfProvider.getText(), jtfQueryUrl.getText(), jtfUsername.getText(), jpfPassword.getPassword()));
+    }
+
+    public void setHost(DynDNSHost host) {
+        jtfProvider.setText(host.getProvider());
+        jtfQueryUrl.setText(host.getQueryUrl());
+        jtfUsername.setText(host.getUname());
     }
 }
